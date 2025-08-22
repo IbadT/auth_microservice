@@ -2,8 +2,12 @@ name: CI Pipeline Auth Microservice
 on:
     pull_request:
         branches:
-            - staging
-            - main
+          - staging
+          - main
+    push:
+        branches:
+          - staging
+          - main
 
 jobs:
     test:
