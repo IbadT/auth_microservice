@@ -1,0 +1,108 @@
+services:
+  auth_app:
+    container_name: auth_app
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    restart: always
+    ports:
+      - "50051:50051"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=auth_db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DATABASE_URL=postgresql://postgres:postgres@auth_db:5432/auth_db
+      - GRPC_URL=0.0.0.0:50051
+      - GRPC_PACKAGE=auth
+      - DB_NAME=auth_db
+      - JWT_SUPER_SECRET_WORD=K9x#mP2vL8nQ4@jR7wE1tY6uI3oA5sD9fG2hJ4kL6mN8pQ0rS2tU4vW6xY8zA0bC2dE4fG6hI8jK0lM2nO4pQ6rS8tU0vW2xY4zA6bC8dE0fG2hI4jK6lM8nO0pQ2rS4tU6vW8xY0zA2bC4dE6fG8hI0jK2lM4nO6pQ8rS0tU2vW4xY6zA8bC0dE2fG4hI6jK8lM0nO2pQ4rS6tU8vW0xY2zA4bC6dE8fG0hI2jK4lM6nO8pQ0rS2tU4vW6xY8zA0bC2dE4fG6hI8jK0lM2nO4pQ6rS8tU0vW2xY4zA6bC8dE0fG2hI4jK6lM8n
+      - JWT_EXPIRES_IN=3600
+      - JWT_REFRESH_SECRET=your_refresh_secret
+      - JWT_REFRESH_EXPIRATION=86400
+      - REDIS_HOST=auth_redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_USERNAME=
+      - REDIS_DB=0
+      - REDIS_TLS_ENABLED=false
+      - TOTP_ISSUER=Auth Microservice
+      - ANOMALY_THRESHOLD=0.7
+      - ANOMALY_WINDOW=300000
+      - ANOMALY_THRESHOLD_MIN=0.3
+      - ANOMALY_THRESHOLD_MAX=0.7
+      - ANOMALY_THRESHOLD_STEP=0.1
+    networks:
+      - backend_network
+    depends_on:
+      auth_db:
+        condition: service_healthy
+      auth_redis:
+        condition: service_healthy
+  
+  auth_db:
+    container_name: auth_db
+    image: postgres:latest
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=auth_db
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "auth_db"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+
+  auth_redis:
+    container_name: auth_redis
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - auth_redis_data:/var/lib/redis/data
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      retries: 5
+      interval: 10s
+      start_period: 30s
+      timeout: 5s
+
+
+  auth_pgadmin:
+    container_name: auth_pgadmin
+    image: dpage/pgadmin4:latest
+    restart: always
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    networks:
+      - backend_network
+    volumes:
+      - auth_pgadmin_data:/var/lib/pgadmin/data
+    
+
+networks:
+  backend_network:
+    driver: bridge
+
+volumes:
+  auth_db_data:
+    driver: local
+  auth_redis_data:
+    driver: local
+  auth_pgadmin_data:
+    driver: local

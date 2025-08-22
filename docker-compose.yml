@@ -1,0 +1,125 @@
+services:
+  app:
+    container_name: auth_app
+    image: auth_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - .env
+    environment:
+      # GRPC_URL: ${GRPC_URL}
+      # GRPC_PACKAGE: ${GRPC_PACKAGE}
+      # JWT_SUPER_SECRET_WORD: ${JWT_SUPER_SECRET_WORD}
+      # JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      # JWT_REFRESH_IN: ${JWT_REFRESH_IN}
+      # DATABASE_URL: ${DATABASE_URL}
+      GRPC_URL: 0.0.0.0:50051
+      GRPC_PACKAGE: auth
+      JWT_SUPER_SECRET_WORD: K9x#mP2vL8nQ4@jR7wE1tY6uI3oA5sD9fG2hJ4kL6mN8pQ0rS2tU4vW6xY8zA0bC2dE4fG6hI8jK0lM2nO4pQ6rS8tU0vW2xY4zA6bC8dE0fG2hI4jK6lM8nO0pQ2rS4tU6vW8xY0zA2bC4dE6fG8hI0jK2lM4nO6pQ8rS0tU2vW4xY6zA8bC0dE2fG4hI6jK8lM0nO2pQ4rS6tU8vW0xY2zA4bC6dE8fG0hI2jK4lM6nO8pQ0rS2tU4vW6xY8zA0bC2dE4fG6hI8jK0lM2nO4pQ6rS8tU0vW2xY4zA6bC8dE0fG2hI4jK6lM8n
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_IN: 7d
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/auth_db
+    ports:
+      - "50051:50051"
+    networks:
+      - auth_network
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  db:
+    container_name: auth_db
+    # image: postgres:latest
+    image: postgres:15
+    restart: always
+    env_file:
+      - .env
+    # environment:
+    #   POSTGRES_USER: ${POSTGRES_USER}
+    #   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    #   POSTGRES_DB: ${POSTGRES_DB}
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=auth_db
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - auth_network
+
+  # redis:
+  #   container_name: auth_redis
+  #   image: redis:7-alpine
+  #   restart: always
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - auth_network
+  #   command: redis-server --appendonly yes
+
+  redis:
+    container_name: auth_redis
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/var/lib/redis/data
+    networks:
+      - auth_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+
+  pgadmin:
+    container_name: auth_pgadmin
+    image: dpage/pgadmin4:latest
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - auth_network
+    depends_on:
+      - db
+
+  # PGADMIN НАСТРОЙКИ:
+  # Host: localhost
+  # Port: 5432
+  # Database: auth_db
+  # Username: postgres
+  # Password: postgres
+  # SSL Mode: Prefer или Disable
+  # 
+  # ДОСТУП К PGADMIN:
+  # URL: http://localhost:5050
+  # Email: admin@admin.com
+  # Password: admin
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  auth_network:
+    driver: bridge
